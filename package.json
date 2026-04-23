@@ -2,23 +2,44 @@
   "name": "mcp-yahoofinance",
   "version": "0.1.0",
   "description": "MCP server exposing Yahoo Finance quotes, multi-window price changes, and symbol search via the yahoo-finance2 library.",
+  "license": "MIT",
+  "author": "0x50b <0x50b@proton.me>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/designoor/mcp-yahoofinance.git"
+  },
+  "homepage": "https://github.com/designoor/mcp-yahoofinance#readme",
+  "bugs": {
+    "url": "https://github.com/designoor/mcp-yahoofinance/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "anthropic",
+    "yahoo-finance",
+    "stocks",
+    "quotes",
+    "finance"
+  ],
   "type": "module",
   "bin": {
     "mcp-yahoofinance": "dist/index.js"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepare": "tsc"
+    "prepublishOnly": "pnpm test && pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "yahoo-finance2": "^3.14.0",
     "zod": "^3.23.0"
   },
