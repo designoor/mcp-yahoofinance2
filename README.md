@@ -33,31 +33,41 @@ pnpm build
 
 ## Use with Claude Desktop
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add to your Claude Desktop config:
+
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "yahoofinance": {
-      "command": "/absolute/path/to/node",
-      "args": ["/absolute/path/to/mcp-yahoofinance/dist/index.js"]
+      "command": "<ABSOLUTE_PATH_TO_NODE>",
+      "args": ["<ABSOLUTE_PATH_TO_REPO>/dist/index.js"]
     }
   }
 }
 ```
 
-**Important:** use an **absolute path** to the node binary, not bare `"node"`. Claude Desktop walks through every directory in your `PATH` and picks the first `node` it finds, which is often an old nvm default. Find your current version with `which node` and paste that full path. Example:
+Replace `<ABSOLUTE_PATH_TO_REPO>` with the path where you cloned this repo and `<ABSOLUTE_PATH_TO_NODE>` with the real absolute path to your `node` binary.
 
-```json
-"command": "/Users/you/.nvm/versions/node/v22.11.0/bin/node"
-```
+### Finding the absolute path to `node`
+
+| Your setup | Command | Notes |
+|---|---|---|
+| macOS / Linux (Homebrew or nvm) | `which node` | Returns the real binary, e.g. `/opt/homebrew/bin/node` or `~/.nvm/versions/node/v22.11.0/bin/node` |
+| Windows | `where node` | Pick the `.exe` path |
+
+If the output starts with `~`, expand it to the full path (e.g. `/Users/yourname/...` on macOS, `/home/yourname/...` on Linux). Claude Desktop does not expand `~`.
+
+A bare `"command": "node"` often resolves to the first `node` on Claude Desktop's `PATH`, which is frequently an old nvm default and will fail with `fetch is not a function` or similar runtime errors. Always use an absolute path.
 
 Restart Claude Desktop.
 
 ## Use with Claude Code
 
 ```sh
-claude mcp add yahoofinance -- /absolute/path/to/node /absolute/path/to/mcp-yahoofinance/dist/index.js
+claude mcp add yahoofinance -- <ABSOLUTE_PATH_TO_NODE> <ABSOLUTE_PATH_TO_REPO>/dist/index.js
 ```
 
 ## Caching
