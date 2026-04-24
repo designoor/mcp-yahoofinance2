@@ -5,8 +5,7 @@ import { createServer } from "./server.js";
 const [major] = process.versions.node.split(".").map(Number);
 if (!major || major < 20) {
   console.error(
-    `mcp-yahoofinance requires Node >= 20 (yahoo-finance2 recommends >= 22). Detected: ${process.versions.node}. ` +
-      `Set the "command" in your MCP client config to an absolute path to a newer node binary.`,
+    `mcp-yahoofinance2 requires Node >= 20 (yahoo-finance2 recommends >= 22). Detected: ${process.versions.node}.`,
   );
   process.exit(1);
 }
@@ -18,6 +17,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("mcp-yahoofinance fatal:", err);
+  console.error("mcp-yahoofinance2 fatal:", err);
   process.exit(1);
 });

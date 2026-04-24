@@ -1,28 +1,33 @@
 # mcp-yahoofinance2
 
-A local [MCP](https://modelcontextprotocol.io) server that fetches prices and multi-window price changes for stocks, ETFs, crypto, indices, and FX via the [yahoo-finance2](https://www.npmjs.com/package/yahoo-finance2) library.
+A local [MCP](https://modelcontextprotocol.io) server for **stock, ETF, crypto, index, and FX** prices and multi-window price changes. Wraps [yahoo-finance2](https://www.npmjs.com/package/yahoo-finance2). No API key required.
 
 ```
 ░█░█░█░█░█▀▀░█▀█░█▀▄░▀█▀░░░█▀█░█░░░█░█░█▀▀░▀█▀░█▀█░█▀▀
 ░█▀▄░█░█░▀▀█░█▀█░█▀▄░░█░░░░█▀▀░█░░░█░█░█░█░░█░░█░█░▀▀█
 ░▀░▀░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░░░▀░░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 ```
-Build with [create-mcp@kusari-plugin](https://github.com/designoor/kusari-plugins) skill.
+Built with the [create-mcp@kusari-plugin](https://github.com/designoor/kusari-plugins) skill.
 
 ## Requirements
 
-- Node.js 20+ (`yahoo-finance2` recommends 22+)
-- No API key — Yahoo Finance is public
+| | |
+|---|---|
+| Runtime | Node.js 20+ (22+ recommended by `yahoo-finance2`) |
+| API key | None — Yahoo Finance is public |
+| Platforms | macOS, Linux, Windows |
 
 ## Install
 
-No clone required — the package is published on npm.
+No clone required — the package is on [npm](https://www.npmjs.com/package/@0x50b/mcp-yahoofinance2).
 
-Add to your Claude Desktop config:
+| Client | Config file |
+|---|---|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Claude Code | project-local `.mcp.json` (also set `enableAllProjectMcpServers: true` in `.claude/settings.local.json`) |
 
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
+Add:
 ```json
 {
   "mcpServers": {
@@ -34,58 +39,111 @@ Add to your Claude Desktop config:
 }
 ```
 
-For Claude Code, the same block goes into a project-level `.mcp.json` at the repo root, then set `"enableAllProjectMcpServers": true` in `.claude/settings.local.json`.
-
-Restart Claude Desktop fully (⌘Q, not just close the window) to pick up the config.
+Restart Claude Desktop fully (⌘Q on macOS, not just close the window).
 
 ## Tools
 
-### `search_symbols`
-Resolve a company name or keyword to matching tickers (e.g. `Apple` → `AAPL`). Call this first when the user gives you a name instead of a symbol.
-- `query` (string, required) — name, ticker fragment, or keyword
-- `limit` (int 1–20, default 10) — max results
+| Tool | Purpose | When to use |
+|---|---|---|
+| [`search_symbols`](#search_symbols) | Name → ticker lookup | User gives a company name instead of a symbol |
+| [`get_quotes`](#get_quotes) | Snapshot: price + 1d change | Only the latest price is needed |
+| [`get_price_changes`](#get_price_changes) | Snapshot + multi-window change | Need performance over time (1w, 1mo, 1y, etc.) |
 
-Returns an array of `{ symbol, name, exchange, type }`. Results cached 10 min.
+---
+
+### `search_symbols`
+
+Resolve a company name or keyword to matching tickers (e.g. `Apple` → `AAPL`).
+
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `query` | string | ✓ | Company name, ticker fragment, or keyword |
+| `limit` | int 1–20 |  | Max results (default 10) |
+
+Returns an array of `{ symbol, name, exchange, type }`. Cached 10 min.
+
+---
 
 ### `get_quotes`
-Current price and 1-day change for one or more tickers in a **single batched request**. Fast path — use when only a snapshot is needed; for longer windows prefer `get_price_changes`.
-- `symbols` (string[], 1–100) — Yahoo tickers, e.g. `AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`
+
+Current price and 1-day change for up to 100 tickers in a **single batched request**.
+
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `symbols` | string[], 1–100 | ✓ | Yahoo tickers, e.g. `AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X` |
 
 Returns `{ found, missing }`:
-- `found[]` — `{ symbol, name, price, change1d, changePct1d, previousClose, currency, marketState, preMarketPrice?, postMarketPrice? }`
-- `missing[]` — tickers Yahoo silently dropped because they couldn't be resolved.
+
+| Field | Type | Notes |
+|---|---|---|
+| `found[]` | object[] | Resolved symbols — see below |
+| `missing[]` | string[] | Symbols Yahoo silently dropped |
+
+Per-symbol shape:
+
+| Field | Type | Description |
+|---|---|---|
+| `symbol`, `name`, `currency` | string | Identity |
+| `price` | number | Latest regular-market price |
+| `change1d`, `changePct1d` | number | Change vs. previous close |
+| `previousClose` | number | Previous session's close |
+| `marketState` | string | `REGULAR` \| `CLOSED` \| `PRE` \| `POST` … |
+| `preMarketPrice`, `postMarketPrice` | number? | Present only during extended hours |
 
 Per-symbol quote cached 15 s.
 
+---
+
 ### `get_price_changes`
-Current price plus change over any combination of windows for a batch of tickers. Internally issues one batched `quote()` plus one `chart()` per symbol in parallel, then computes every requested window client-side from a single ~1-year daily-history response. Heavier than `get_quotes` — use only when you need more than a snapshot.
-- `symbols` (string[], 1–50)
-- `windows` (array of `1d` | `1w` | `1mo` | `3mo` | `6mo` | `1y` | `ytd`, optional) — default: all seven
 
-Returns `{ found, missing, windows }`:
-- `found[]` — `{ symbol, name, price, currency, marketState, windows: { [windowKey]: { changeAbs, changePct, fromPrice, fromDate } | null } }`
-- `windows` with `null` values indicate history didn't reach the cutoff (newly listed symbols).
-- `1d` is sourced from the live quote (`previousClose`); other windows walk back through the daily-history series to the first close at or before the cutoff, so weekends and holidays are handled automatically.
+Current price plus change over any combination of windows. Heavier than `get_quotes` — one batched `quote()` plus one `chart()` per symbol, then windows are computed client-side from a single ~1-year daily-history response.
 
-Per-symbol chart history cached 5 min.
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `symbols` | string[], 1–50 | ✓ | Yahoo tickers |
+| `windows` | enum[] |  | Subset of the windows below; default: all |
+
+Supported windows:
+
+| Key | Source | Notes |
+|---|---|---|
+| `1d` | Live quote `previousClose` | Always accurate to the latest tick |
+| `1w`, `1mo`, `3mo`, `6mo`, `1y` | Chart close at/before cutoff | Weekends/holidays padded automatically |
+| `ytd` | Chart close on first trading day of calendar year | |
+
+Returns `{ found, missing, windows }`. Per-symbol window entry:
+
+| Field | Type | Notes |
+|---|---|---|
+| `changeAbs` | number | Current price − past price |
+| `changePct` | number | Percent change |
+| `fromPrice` | number | The past price used as the baseline |
+| `fromDate` | string (ISO date) | The trading day the baseline came from |
+
+`null` windows indicate the symbol's history didn't reach that cutoff (newly listed). Per-symbol chart history cached 5 min.
 
 ## Performance & batching
 
-- `quote()` is the **only** Yahoo endpoint that accepts multiple symbols in a single HTTP request. `get_quotes` exploits this — any number of symbols up to 100 costs one request.
-- `chart()` is single-symbol, so `get_price_changes` makes one chart request per symbol. These run concurrently through `yahoo-finance2`'s built-in request queue (default concurrency 4 — kept at the library default to stay under Yahoo's undocumented rate limits).
-- All caches are in-memory for the lifetime of the server process.
+| Endpoint | Batched? | Behaviour |
+|---|---|---|
+| Yahoo `quote()` | ✓ up to 100 symbols/request | One HTTP call regardless of symbol count |
+| Yahoo `chart()` | ✗ single symbol | Parallelized via `yahoo-finance2`'s queue (concurrency 4) |
 
-## Local development (contributors only)
+All caches are in-memory for the server-process lifetime.
 
-```bash
+## Local development
+
+```sh
 git clone https://github.com/designoor/mcp-yahoofinance2.git
 cd mcp-yahoofinance2
 pnpm install
-
-pnpm test            # vitest run
-pnpm build           # compiles to dist/
-pnpm dev             # runs via tsx without a build step
-node dist/index.js   # manual stdio run
 ```
 
-To test changes against Claude Desktop locally, point the config at your built `dist/index.js` via its absolute path instead of `npx`.
+| Command | What |
+|---|---|
+| `pnpm dev` | Run the server over stdio via tsx — no build step |
+| `pnpm test` | `vitest run` |
+| `pnpm build` | Compile to `dist/` |
+| `node dist/index.js` | Manual stdio run against the built output |
+
+To test changes in Claude Desktop, point the config's `command` at `node` and `args` at your absolute `dist/index.js` instead of `npx`.
