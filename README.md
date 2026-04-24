@@ -2,6 +2,8 @@
 
 An MCP server exposing Yahoo Finance quotes, multi-window price changes, and symbol search. Wraps [`yahoo-finance2`](https://www.npmjs.com/package/yahoo-finance2) and is designed to minimize upstream requests by using batched `quote()` calls and caching chart history.
 
+Build with [create-mcp@kusari-plugin](https://github.com/designoor/kusari-plugins) skill.
+
 ## Tools
 
 ### `search_symbols`
