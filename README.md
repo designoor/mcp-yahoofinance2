@@ -13,7 +13,7 @@ Built with the [create-mcp@kusari-plugin](https://github.com/designoor/kusari-pl
 
 | | |
 |---|---|
-| Runtime | Node.js 20+ (22+ recommended by `yahoo-finance2`) |
+| Runtime | Node.js 22+
 | API key | None — Yahoo Finance is public |
 | Platforms | macOS, Linux, Windows |
 
