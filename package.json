@@ -1,16 +1,16 @@
 {
-  "name": "mcp-yahoofinance",
+  "name": "@0x50b/mcp-yahoofinance2",
   "version": "0.1.0",
   "description": "MCP server exposing Yahoo Finance quotes, multi-window price changes, and symbol search via the yahoo-finance2 library.",
   "license": "MIT",
   "author": "0x50b <0x50b@proton.me>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/designoor/mcp-yahoofinance.git"
+    "url": "git+https://github.com/designoor/mcp-yahoofinance2.git"
   },
-  "homepage": "https://github.com/designoor/mcp-yahoofinance#readme",
+  "homepage": "https://github.com/designoor/mcp-yahoofinance2#readme",
   "bugs": {
-    "url": "https://github.com/designoor/mcp-yahoofinance/issues"
+    "url": "https://github.com/designoor/mcp-yahoofinance2/issues"
   },
   "keywords": [
     "mcp",
@@ -24,7 +24,10 @@
   ],
   "type": "module",
   "bin": {
-    "mcp-yahoofinance": "dist/index.js"
+    "mcp-yahoofinance2": "dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist",

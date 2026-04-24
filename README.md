@@ -1,37 +1,22 @@
-# mcp-yahoofinance
+# mcp-yahoofinance2
 
-An MCP server exposing Yahoo Finance quotes, multi-window price changes, and symbol search. Wraps [`yahoo-finance2`](https://www.npmjs.com/package/yahoo-finance2) and is designed to minimize upstream requests by using batched `quote()` calls and caching chart history.
+A local [MCP](https://modelcontextprotocol.io) server that fetches prices and multi-window price changes for stocks, ETFs, crypto, indices, and FX via the [yahoo-finance2](https://www.npmjs.com/package/yahoo-finance2) library.
 
-## Tools
-
-### `search_symbols`
-Resolve a company name or keyword to matching tickers.
-- `query` (string, required)
-- `limit` (1-20, default 10)
-
-### `get_quotes`
-Current price and 1-day change for one or more tickers — **single batched request**. Use this when you only need a snapshot.
-- `symbols` (string[], 1-100)
-
-Returns `{ found: [...], missing: [...] }`. Tickers Yahoo cannot resolve are listed in `missing`.
-
-### `get_price_changes`
-Current price plus change across any combination of windows. Issues one batched `quote()` + one `chart()` per symbol in parallel, computes all windows client-side from a single ~1y daily history.
-- `symbols` (string[], 1-50)
-- `windows` (subset of `1d`, `1w`, `1mo`, `3mo`, `6mo`, `1y`, `ytd`; default: all seven)
-
-## Install (from source)
-
-```sh
-pnpm install
-pnpm build
 ```
+░█░█░█░█░█▀▀░█▀█░█▀▄░▀█▀░░░█▀█░█░░░█░█░█▀▀░▀█▀░█▀█░█▀▀
+░█▀▄░█░█░▀▀█░█▀█░█▀▄░░█░░░░█▀▀░█░░░█░█░█░█░░█░░█░█░▀▀█
+░▀░▀░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░░░▀░░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
+```
+Build with [create-mcp@kusari-plugin](https://github.com/designoor/kusari-plugins) skill.
 
 ## Requirements
 
-- **Node 20 or newer** at runtime — `yahoo-finance2` itself recommends Node 22+. Node 18 and older lack global `fetch` and will crash.
+- Node.js 20+ (`yahoo-finance2` recommends 22+)
+- No API key — Yahoo Finance is public
 
-## Use with Claude Desktop
+## Install
+
+No clone required — the package is published on npm.
 
 Add to your Claude Desktop config:
 
@@ -42,55 +27,65 @@ Add to your Claude Desktop config:
 {
   "mcpServers": {
     "yahoofinance": {
-      "command": "<ABSOLUTE_PATH_TO_NODE>",
-      "args": ["<ABSOLUTE_PATH_TO_REPO>/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@0x50b/mcp-yahoofinance2"]
     }
   }
 }
 ```
 
-Replace `<ABSOLUTE_PATH_TO_REPO>` with the path where you cloned this repo and `<ABSOLUTE_PATH_TO_NODE>` with the real absolute path to your `node` binary.
+For Claude Code, the same block goes into a project-level `.mcp.json` at the repo root, then set `"enableAllProjectMcpServers": true` in `.claude/settings.local.json`.
 
-### Finding the absolute path to `node`
+Restart Claude Desktop fully (⌘Q, not just close the window) to pick up the config.
 
-| Your setup | Command | Notes |
-|---|---|---|
-| macOS / Linux (Homebrew or nvm) | `which node` | Returns the real binary, e.g. `/opt/homebrew/bin/node` or `~/.nvm/versions/node/v22.11.0/bin/node` |
-| Windows | `where node` | Pick the `.exe` path |
+## Tools
 
-If the output starts with `~`, expand it to the full path (e.g. `/Users/yourname/...` on macOS, `/home/yourname/...` on Linux). Claude Desktop does not expand `~`.
+### `search_symbols`
+Resolve a company name or keyword to matching tickers (e.g. `Apple` → `AAPL`). Call this first when the user gives you a name instead of a symbol.
+- `query` (string, required) — name, ticker fragment, or keyword
+- `limit` (int 1–20, default 10) — max results
 
-A bare `"command": "node"` often resolves to the first `node` on Claude Desktop's `PATH`, which is frequently an old nvm default and will fail with `fetch is not a function` or similar runtime errors. Always use an absolute path.
+Returns an array of `{ symbol, name, exchange, type }`. Results cached 10 min.
 
-Restart Claude Desktop.
+### `get_quotes`
+Current price and 1-day change for one or more tickers in a **single batched request**. Fast path — use when only a snapshot is needed; for longer windows prefer `get_price_changes`.
+- `symbols` (string[], 1–100) — Yahoo tickers, e.g. `AAPL`, `BTC-USD`, `^GSPC`, `EURUSD=X`
 
-## Use with Claude Code
+Returns `{ found, missing }`:
+- `found[]` — `{ symbol, name, price, change1d, changePct1d, previousClose, currency, marketState, preMarketPrice?, postMarketPrice? }`
+- `missing[]` — tickers Yahoo silently dropped because they couldn't be resolved.
 
-```sh
-claude mcp add yahoofinance -- <ABSOLUTE_PATH_TO_NODE> <ABSOLUTE_PATH_TO_REPO>/dist/index.js
+Per-symbol quote cached 15 s.
+
+### `get_price_changes`
+Current price plus change over any combination of windows for a batch of tickers. Internally issues one batched `quote()` plus one `chart()` per symbol in parallel, then computes every requested window client-side from a single ~1-year daily-history response. Heavier than `get_quotes` — use only when you need more than a snapshot.
+- `symbols` (string[], 1–50)
+- `windows` (array of `1d` | `1w` | `1mo` | `3mo` | `6mo` | `1y` | `ytd`, optional) — default: all seven
+
+Returns `{ found, missing, windows }`:
+- `found[]` — `{ symbol, name, price, currency, marketState, windows: { [windowKey]: { changeAbs, changePct, fromPrice, fromDate } | null } }`
+- `windows` with `null` values indicate history didn't reach the cutoff (newly listed symbols).
+- `1d` is sourced from the live quote (`previousClose`); other windows walk back through the daily-history series to the first close at or before the cutoff, so weekends and holidays are handled automatically.
+
+Per-symbol chart history cached 5 min.
+
+## Performance & batching
+
+- `quote()` is the **only** Yahoo endpoint that accepts multiple symbols in a single HTTP request. `get_quotes` exploits this — any number of symbols up to 100 costs one request.
+- `chart()` is single-symbol, so `get_price_changes` makes one chart request per symbol. These run concurrently through `yahoo-finance2`'s built-in request queue (default concurrency 4 — kept at the library default to stay under Yahoo's undocumented rate limits).
+- All caches are in-memory for the lifetime of the server process.
+
+## Local development (contributors only)
+
+```bash
+git clone https://github.com/designoor/mcp-yahoofinance2.git
+cd mcp-yahoofinance2
+pnpm install
+
+pnpm test            # vitest run
+pnpm build           # compiles to dist/
+pnpm dev             # runs via tsx without a build step
+node dist/index.js   # manual stdio run
 ```
 
-## Caching
-
-| Tool | TTL |
-|---|---|
-| `search_symbols` | 10 min |
-| `get_quotes` (per symbol) | 15 s |
-| `get_price_changes` chart history (per symbol) | 5 min |
-
-Cache is in-memory for the lifetime of the server process.
-
-## Development
-
-```sh
-pnpm dev           # run with tsx, no build step
-pnpm build         # tsc -> dist/
-pnpm test          # vitest
-pnpm test:watch
-```
-
-## Notes
-
-- The `yahoo-finance2` client uses a built-in request queue (default concurrency 4) shared across all calls — we keep the default to stay well under Yahoo's undocumented rate limits.
-- `quote()` is the only Yahoo endpoint that natively supports multiple symbols per HTTP request; `chart()` is single-symbol, so `get_price_changes` fires one chart request per symbol (queued).
-- Yahoo silently drops unknown symbols from batch `quote()` responses — we detect this and surface them in `missing`.
+To test changes against Claude Desktop locally, point the config at your built `dist/index.js` via its absolute path instead of `npx`.
