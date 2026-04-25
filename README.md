@@ -7,7 +7,7 @@ A local [MCP](https://modelcontextprotocol.io) server for **stock, ETF, crypto, 
 ░█▀▄░█░█░▀▀█░█▀█░█▀▄░░█░░░░█▀▀░█░░░█░█░█░█░░█░░█░█░▀▀█
 ░▀░▀░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░░░▀░░░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 ```
-Built with the [create-mcp@kusari-plugin](https://github.com/designoor/kusari-plugins) skill.
+Build with [create-mcp@kusari-plugin](https://github.com/kusarixyz/kusari-plugins) skill.
 
 ## Requirements
 
