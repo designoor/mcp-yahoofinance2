@@ -11,15 +11,12 @@ Built with the [create-mcp@kusari-plugin](https://github.com/designoor/kusari-pl
 
 ## Requirements
 
-| | |
-|---|---|
-| Runtime | Node.js 22+
-| API key | None — Yahoo Finance is public |
-| Platforms | macOS, Linux, Windows |
+- Node.js 22+
+- No API key required
 
 ## Install
 
-No clone required — the package is on [npm](https://www.npmjs.com/package/@0x50b/mcp-yahoofinance2).
+The package is on [npm](https://www.npmjs.com/package/@0x50b/mcp-yahoofinance2) but you don't have to install it. Using npx is perfectly fine.
 
 | Client | Config file |
 |---|---|
