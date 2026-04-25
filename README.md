@@ -24,7 +24,6 @@ The package is on [npm](https://www.npmjs.com/package/@0x50b/mcp-yahoofinance2) 
 | Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
 | Claude Code | project-local `.mcp.json` (also set `enableAllProjectMcpServers: true` in `.claude/settings.local.json`) |
 
-Add:
 ```json
 {
   "mcpServers": {
