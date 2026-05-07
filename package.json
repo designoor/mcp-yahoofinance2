@@ -1,6 +1,6 @@
 {
   "name": "@0x50b/mcp-yahoofinance2",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "MCP server exposing Yahoo Finance quotes, multi-window price changes, and symbol search via the yahoo-finance2 library.",
   "license": "MIT",
   "author": "0x50b <0x50b@proton.me>",
