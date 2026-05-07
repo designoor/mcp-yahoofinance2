@@ -37,6 +37,32 @@ The package is on [npm](https://www.npmjs.com/package/@0x50b/mcp-yahoofinance2) 
 
 Restart Claude Desktop fully (⌘Q on macOS, not just close the window).
 
+### Run from a local clone
+
+If you'd rather run your own checkout (e.g. for a forked version, an unpublished change), build the server first:
+
+```sh
+git clone https://github.com/designoor/mcp-yahoofinance2.git
+cd mcp-yahoofinance2
+pnpm install
+pnpm build
+```
+
+Then point your client config at the built `dist/index.js` using an **absolute path**:
+
+```json
+{
+  "mcpServers": {
+    "yahoofinance": {
+      "command": "node",
+      "args": ["/absolute/path/to/mcp-yahoofinance2/dist/index.js"]
+    }
+  }
+}
+```
+
+Re-run `pnpm build` after any source change, then restart the client.
+
 ## Tools
 
 | Tool | Purpose | When to use |
@@ -44,6 +70,7 @@ Restart Claude Desktop fully (⌘Q on macOS, not just close the window).
 | [`search_symbols`](#search_symbols) | Name → ticker lookup | User gives a company name instead of a symbol |
 | [`get_quotes`](#get_quotes) | Snapshot: price + 1d change | Only the latest price is needed |
 | [`get_price_changes`](#get_price_changes) | Snapshot + multi-window change | Need performance over time (1w, 1mo, 1y, etc.) |
+| [`get_historical_quotes`](#get_historical_quotes) | Raw OHLCV time series | Charting, single-date lookup, custom analysis |
 
 ---
 
@@ -117,6 +144,40 @@ Returns `{ found, missing, windows }`. Per-symbol window entry:
 | `fromDate` | string (ISO date) | The trading day the baseline came from |
 
 `null` windows indicate the symbol's history didn't reach that cutoff (newly listed). Per-symbol chart history cached 5 min.
+
+---
+
+### `get_historical_quotes`
+
+Raw OHLCV time series across a date range. One `chart()` request per symbol, parallelized.
+
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `symbols` | string[], 1–50 | ✓ | Yahoo tickers |
+| `from` | string (ISO `YYYY-MM-DD`) | ✓ | Start date, inclusive |
+| `to` | string (ISO `YYYY-MM-DD`) |  | End date, inclusive. Default: today |
+| `interval` | `1d` \| `1wk` \| `1mo` |  | Bar granularity. Default: `1d` |
+
+Returns `{ found, missing, from, to, interval }`. Per-symbol shape:
+
+| Field | Type | Description |
+|---|---|---|
+| `symbol`, `name`, `currency` | string | Identity |
+| `interval` | string | Echo of the requested interval |
+| `quotes[]` | object[] | OHLCV rows — see below |
+| `note` | string? | Present only when `quotes` is empty (e.g. `"Non-trading day (weekend). Last available trading day: 2026-03-13."`) |
+| `lastAvailable` | object? | Present only when `quotes` is empty — the most recent trading row before `from` (same shape as a `quotes[]` row) |
+
+Per-row shape:
+
+| Field | Type | Notes |
+|---|---|---|
+| `date` | string (ISO date) | Trading day |
+| `open`, `high`, `low`, `close` | number? | Raw prices |
+| `adjClose` | number? | Close adjusted for splits and dividends |
+| `volume` | number? | Shares traded |
+
+Single-date queries (`from === to`) return one row, or an empty `quotes` with a `note` and `lastAvailable` (the most recent prior trading row, e.g. Friday's close for a Sunday request) if the date is a weekend / market holiday / before listing. The fetch always extends 14 days before `from` to surface that fallback. Per `(symbol, from, to, interval)` cached 30 min.
 
 ## Performance & batching
 
